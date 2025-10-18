@@ -31,7 +31,17 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Verify compliance with [Claude Pulse Constitution](../.specify/memory/constitution.md):
+
+- [ ] **Simplicity First**: Is this the simplest implementation that delivers value? Any complexity justified?
+- [ ] **User Experience**: Does the CLI have clear commands, helpful errors, and good documentation?
+- [ ] **Visual Excellence**: Is terminal output clean, colored appropriately, and aesthetically pleasing?
+- [ ] **Cross-Platform**: Does it work on Linux, macOS, and Windows? Path handling platform-agnostic?
+- [ ] **Robustness**: Input validation, error handling, data safety, and graceful exits implemented?
+- [ ] **Testing**: Are unit, integration, and contract tests planned (unless explicitly waived)?
+- [ ] **Documentation**: README, API docs, and bilingual documentation planned where needed?
+
+*Any violations must be justified in the Complexity Tracking section below*
 
 ## Project Structure
 

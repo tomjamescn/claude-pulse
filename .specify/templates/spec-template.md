@@ -80,12 +80,16 @@
 <!--
   ACTION REQUIRED: The content in this section represents placeholders.
   Fill them out with the right functional requirements.
+
+  NOTE: All requirements must align with the Claude Pulse Constitution principles:
+  - Simplicity First, User Experience Excellence, Visual Excellence
+  - Cross-Platform Compatibility, Robustness & Reliability
 -->
 
 ### Functional Requirements
 
 - **FR-001**: System MUST [specific capability, e.g., "allow users to create accounts"]
-- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]  
+- **FR-002**: System MUST [specific capability, e.g., "validate email addresses"]
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
@@ -94,6 +98,32 @@
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
 - **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+
+### Constitution-Mandated Requirements
+
+The following requirements are mandated by the [Claude Pulse Constitution](../.specify/memory/constitution.md):
+
+**User Experience**:
+- **FR-UX-001**: CLI MUST provide --help flag with comprehensive documentation
+- **FR-UX-002**: Error messages MUST include actionable guidance
+- **FR-UX-003**: Long operations MUST show progress indicators
+- **FR-UX-004**: Interactive prompts MUST have sensible defaults
+
+**Visual Excellence**:
+- **FR-VIS-001**: Output MUST use consistent colors for message types (error/warning/success/info)
+- **FR-VIS-002**: CLI MUST support --no-color flag for plain text output
+- **FR-VIS-003**: Tables and lists MUST be properly aligned
+
+**Cross-Platform**:
+- **FR-CP-001**: Program MUST work on Linux, macOS, and Windows
+- **FR-CP-002**: File paths MUST use platform-agnostic handling
+- **FR-CP-003**: Line endings MUST be handled correctly per platform
+
+**Robustness**:
+- **FR-ROB-001**: All user inputs MUST be validated before processing
+- **FR-ROB-002**: Program MUST handle Ctrl+C gracefully
+- **FR-ROB-003**: Errors MUST be logged with sufficient debugging context
+- **FR-ROB-004**: User data operations MUST use atomic writes or confirmations
 
 ### Key Entities *(include if feature involves data)*
 

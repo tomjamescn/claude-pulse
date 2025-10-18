@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/tomjamescn/claude-pulse/specs/001-claude-usage-monitor/contracts/claude-usage-api.json",
+  "title": "Claude Usage API Response",
+  "description": "JSON Schema for Claude usage API response (reverse-engineered from claude.ai/settings/usage). This is UNOFFICIAL and may change without notice.",
+  "type": "object",
+  "required": [
+    "billing_period",
+    "period_start",
+    "period_end",
+    "usage"
+  ],
+  "properties": {
+    "billing_period": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$",
+      "description": "Billing period in YYYY-MM format",
+      "examples": ["2025-10", "2025-11"]
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Start of billing period (ISO 8601)",
+      "examples": ["2025-10-01T00:00:00Z"]
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date-time",
+      "description": "End of billing period (ISO 8601)",
+      "examples": ["2025-10-31T23:59:59Z"]
+    },
+    "usage": {
+      "type": "object",
+      "required": [
+        "input_tokens",
+        "output_tokens"
+      ],
+      "properties": {
+        "input_tokens": {
+          "type": "object",
+          "required": ["used", "quota"],
+          "properties": {
+            "used": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of input tokens consumed"
+            },
+            "quota": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Input token quota for period"
+            }
+          }
+        },
+        "output_tokens": {
+          "type": "object",
+          "required": ["used", "quota"],
+          "properties": {
+            "used": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of output tokens consumed"
+            },
+            "quota": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Output token quota for period"
+            }
+          }
+        },
+        "messages": {
+          "type": "object",
+          "description": "Message count (may not be present in all plans)",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total messages sent"
+            },
+            "quota": {
+              "type": ["integer", "null"],
+              "minimum": 1,
+              "description": "Message quota (null if unlimited)"
+            }
+          }
+        }
+      }
+    },
+    "organization_id": {
+      "type": "string",
+      "description": "Organization UUID (may be exposed in API)"
+    },
+    "reset_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When usage resets for next period"
+    }
+  },
+  "examples": [
+    {
+      "billing_period": "2025-10",
+      "period_start": "2025-10-01T00:00:00Z",
+      "period_end": "2025-10-31T23:59:59Z",
+      "usage": {
+        "input_tokens": {
+          "used": 1500000,
+          "quota": 5000000
+        },
+        "output_tokens": {
+          "used": 750000,
+          "quota": 2500000
+        },
+        "messages": {
+          "count": 320,
+          "quota": null
+        }
+      },
+      "organization_id": "org_abc123xyz",
+      "reset_date": "2025-11-01T00:00:00Z"
+    }
+  ],
+  "additionalProperties": true,
+  "_metadata": {
+    "contract_version": "1.0.0",
+    "last_verified": "2025-10-19",
+    "discovery_method": "Manual inspection via Chrome DevTools",
+    "notes": [
+      "This schema is based on EXPECTED structure, not yet verified against real API",
+      "Actual endpoint URL needs to be discovered during implementation",
+      "Field names and nesting may differ from actual API",
+      "Contract tests will validate and update this schema"
+    ]
+  }
+}

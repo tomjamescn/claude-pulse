@@ -147,11 +147,27 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
+### Constitution Compliance
+
+Per [Claude Pulse Constitution](../.specify/memory/constitution.md):
+
+- [ ] TXXX [P] **User Experience**: Verify --help documentation is comprehensive
+- [ ] TXXX [P] **User Experience**: Ensure all error messages include actionable guidance
+- [ ] TXXX [P] **Visual Excellence**: Validate color usage and --no-color support
+- [ ] TXXX [P] **Visual Excellence**: Check table/list alignment and terminal width handling
+- [ ] TXXX **Cross-Platform**: Test on Linux, macOS, and Windows
+- [ ] TXXX [P] **Robustness**: Verify input validation and error handling
+- [ ] TXXX [P] **Robustness**: Test Ctrl+C graceful exit
+- [ ] TXXX [P] **Simplicity**: Review for unnecessary complexity
+
+### Documentation & Quality
+
 - [ ] TXXX [P] Documentation updates in docs/
+- [ ] TXXX [P] Bilingual documentation (中英文) for key features
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
-- [ ] TXXX Security hardening
+- [ ] TXXX Security hardening (no hardcoded secrets, input validation)
 - [ ] TXXX Run quickstart.md validation
 
 ---
