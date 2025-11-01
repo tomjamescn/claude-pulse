@@ -16,19 +16,23 @@ class ThirdPartyFetcher:
     通过 HTTP 请求获取第三方 Claude API 服务的使用量信息
     """
 
+    # 默认配置 - 固化的 API 配置
+    DEFAULT_API_URL = "https://hk1.pincc.ai/apiStats/api/user-stats"
+    DEFAULT_API_ID = "719b5189-1855-4982-9331-a15927e34525"
+
     def __init__(
         self,
-        api_url: str = "https://hk1.pincc.ai/apiStats/api/user-stats",
-        api_id: str = "719b5189-1855-4982-9331-a15927e34525",
+        api_url: str = None,
+        api_id: str = None,
     ):
         """初始化获取器
 
         Args:
-            api_url: API 端点 URL
-            api_id: API ID
+            api_url: API 端点 URL（可选，默认使用固化的 URL）
+            api_id: API ID（可选，默认使用固化的 ID）
         """
-        self.api_url = api_url
-        self.api_id = api_id
+        self.api_url = api_url or self.DEFAULT_API_URL
+        self.api_id = api_id or self.DEFAULT_API_ID
 
     async def fetch_usage(self) -> ThirdPartyUsageData:
         """获取使用量数据 - Fetch usage data

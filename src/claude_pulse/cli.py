@@ -55,6 +55,13 @@ def usage():
 
 @usage.command("show")
 @click.option(
+    "--source",
+    type=click.Choice(["all", "claude", "pincc"], case_sensitive=False),
+    default="all",
+    help="数据来源：all(全部), claude(Claude官方), pincc(第三方) - Data source",
+    show_default=True,
+)
+@click.option(
     "--json",
     "output_json",
     is_flag=True,
@@ -66,139 +73,108 @@ def usage():
     help="禁用彩色输出 - Disable colored output",
 )
 @click.pass_context
-def usage_show(ctx: click.Context, output_json: bool, no_color: bool):
-    """显示当前使用量 - Show current usage
+def usage_show(
+    ctx: click.Context, source: str, output_json: bool, no_color: bool
+):
+    """显示使用量 - Show usage data
 
-    连接到浏览器，访问 claude.ai/settings/usage 并显示使用量数据。
+    默认显示所有来源的使用量数据（Claude官方 + 第三方）
+    Default shows usage from all sources (Claude official + third-party)
 
-    前置要求 Prerequisites:
+    前置要求 Prerequisites (仅 Claude官方):
       - Edge/Chrome 浏览器正在运行（启用远程调试）
       - 已登录 claude.ai
 
-    启动浏览器 Start Browser:
-      Edge (推荐):
-        macOS: /Applications/Microsoft\\ Edge.app/.../Microsoft\\ Edge
-               --remote-debugging-port=9222
-        Windows: msedge.exe --remote-debugging-port=9222
-
-      Chrome:
-        macOS: /Applications/Google\\ Chrome.app/.../Google\\ Chrome
-               --remote-debugging-port=9222
-        Windows: chrome.exe --remote-debugging-port=9222
-
     示例 Examples:
-      claude-pulse usage show
-      claude-pulse usage show --json
-      claude-pulse usage show --no-color
+      claude-pulse usage show                    # 显示所有来源
+      claude-pulse usage show --source claude    # 仅显示 Claude官方
+      claude-pulse usage show --source pincc     # 仅显示第三方
+      claude-pulse usage show --json             # JSON 格式
     """
     cdp_url = ctx.obj["cdp_url"]
+    source = source.lower()
 
     async def _fetch_and_display():
         """异步获取并显示数据"""
-        fetcher = UsageFetcher(cdp_url=cdp_url)
+        results = {}
+        errors = []
 
-        try:
-            # 显示加载提示（仅在非 JSON 模式）
-            if not output_json:
-                console.print("[cyan]正在连接浏览器... Connecting to browser...[/cyan]")
+        # 根据 source 参数决定获取哪些数据
+        fetch_claude = source in ["all", "claude"]
+        fetch_pincc = source in ["all", "pincc"]
 
-            # 获取使用量数据
-            usage_data = await fetcher.fetch_current()
+        # 获取 Claude 官方使用量
+        if fetch_claude:
+            try:
+                if not output_json:
+                    console.print(
+                        "[cyan]正在获取 Claude 官方使用量... "
+                        "Fetching Claude official usage...[/cyan]"
+                    )
+                fetcher = UsageFetcher(cdp_url=cdp_url)
+                try:
+                    usage_data = await fetcher.fetch_current()
+                    results["claude"] = usage_data
+                finally:
+                    await fetcher.close()
+            except Exception as e:
+                errors.append(("claude", e))
+                if source == "claude":  # 如果只获取 Claude 就直接报错退出
+                    _handle_error(e, output_json)
+                    sys.exit(1)
 
-            # 输出结果
-            if output_json:
-                # JSON 格式输出
-                output = json_lib.dumps(
-                    usage_data.model_dump(mode="json"),
-                    indent=2,
-                    ensure_ascii=False,
-                    default=str,
-                )
-                click.echo(output)
-            else:
-                # 表格格式输出
+        # 获取第三方使用量
+        if fetch_pincc:
+            try:
+                if not output_json:
+                    console.print(
+                        "[cyan]正在获取第三方使用量... "
+                        "Fetching third-party usage...[/cyan]"
+                    )
+                third_party_fetcher = ThirdPartyFetcher()
+                pincc_data = await third_party_fetcher.fetch_usage()
+                results["pincc"] = pincc_data
+            except Exception as e:
+                errors.append(("pincc", e))
+                if source == "pincc":  # 如果只获取 Pincc 就直接报错退出
+                    _handle_error(e, output_json)
+                    sys.exit(1)
+
+        # 输出结果
+        if output_json:
+            # JSON 格式输出
+            output_data = {}
+            if "claude" in results:
+                output_data["claude"] = results["claude"].model_dump(mode="json")
+            if "pincc" in results:
+                output_data["pincc"] = results["pincc"].model_dump(mode="json")
+            if errors:
+                output_data["errors"] = [
+                    {"source": src, "error": str(err)} for src, err in errors
+                ]
+            output = json_lib.dumps(
+                output_data, indent=2, ensure_ascii=False, default=str
+            )
+            click.echo(output)
+        else:
+            # 表格格式输出
+            if "claude" in results:
+                console.print()  # 空行
                 formatter = UsageFormatter(no_color=no_color)
-                formatter.format_table(usage_data)
+                formatter.format_table(results["claude"])
 
-        except Exception as e:
-            # 错误处理
-            _handle_error(e, output_json)
-            sys.exit(1)
+            if "pincc" in results:
+                console.print()  # 空行
+                third_party_formatter = ThirdPartyFormatter(no_color=no_color)
+                third_party_formatter.format_table(results["pincc"])
 
-        finally:
-            # 清理资源
-            await fetcher.close()
-
-    # 运行异步任务
-    asyncio.run(_fetch_and_display())
-
-
-@usage.command("third-party")
-@click.option(
-    "--api-url",
-    default="https://hk1.pincc.ai/apiStats/api/user-stats",
-    help="第三方 API URL - Third-party API URL",
-    show_default=True,
-)
-@click.option(
-    "--api-id",
-    required=True,
-    help="API ID（必填） - API ID (required)",
-)
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    help="以 JSON 格式输出 - Output in JSON format",
-)
-@click.option(
-    "--no-color",
-    is_flag=True,
-    help="禁用彩色输出 - Disable colored output",
-)
-def usage_third_party(
-    api_url: str, api_id: str, output_json: bool, no_color: bool
-):
-    """显示第三方 API 使用量 - Show third-party API usage
-
-    从第三方 Claude API 服务获取使用量数据。
-
-    示例 Examples:
-      claude-pulse usage third-party --api-id YOUR_API_ID
-      claude-pulse usage third-party --api-id YOUR_API_ID --json
-    """
-
-    async def _fetch_and_display():
-        """异步获取并显示数据"""
-        fetcher = ThirdPartyFetcher(api_url=api_url, api_id=api_id)
-
-        try:
-            # 显示加载提示（仅在非 JSON 模式）
-            if not output_json:
-                console.print("[cyan]正在获取使用量数据... Fetching usage data...[/cyan]")
-
-            # 获取使用量数据
-            usage_data = await fetcher.fetch_usage()
-
-            # 输出结果
-            if output_json:
-                # JSON 格式输出
-                output = json_lib.dumps(
-                    usage_data.model_dump(mode="json"),
-                    indent=2,
-                    ensure_ascii=False,
-                    default=str,
-                )
-                click.echo(output)
-            else:
-                # 表格格式输出
-                formatter = ThirdPartyFormatter(no_color=no_color)
-                formatter.format_table(usage_data)
-
-        except Exception as e:
-            # 错误处理
-            _handle_error(e, output_json)
-            sys.exit(1)
+            # 显示错误（如果有）
+            if errors:
+                console.print()  # 空行
+                for src, err in errors:
+                    console.print(
+                        f"[yellow]⚠️  无法获取 {src} 数据: {str(err)}[/yellow]"
+                    )
 
     # 运行异步任务
     asyncio.run(_fetch_and_display())
