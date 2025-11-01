@@ -7,7 +7,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .models import UsageData
+from .models import ThirdPartyUsageData, UsageData
 
 
 class UsageFormatter:
@@ -141,3 +141,108 @@ class UsageFormatter:
                 border_style="red",
             )
             self.console.print(warning)
+
+
+class ThirdPartyFormatter:
+    """第三方 API 格式化器 - Third-party API Formatter
+
+    格式化第三方 Claude API 的使用量数据
+    """
+
+    def __init__(self, no_color: bool = False):
+        """初始化格式化器
+
+        Args:
+            no_color: 是否禁用颜色输出
+        """
+        self.console = Console(force_terminal=not no_color, no_color=no_color)
+
+    def format_table(self, usage: ThirdPartyUsageData) -> None:
+        """显示使用量表格 - Display usage table
+
+        Args:
+            usage: 第三方使用量数据
+        """
+        # 创建标题
+        title = Text("Third-party Claude API Usage", style="bold cyan")
+
+        # 创建表格
+        table = Table(title=title, show_header=True, header_style="bold magenta")
+        table.add_column("限制类型 Limit Type", style="cyan", width=25)
+        table.add_column("已使用 Used", justify="right", style="yellow")
+        table.add_column("限制 Limit", justify="right", style="blue")
+        table.add_column("剩余 Remaining", justify="right", style="green")
+        table.add_column("状态 Status", justify="center", width=10)
+
+        # 添加各种限制信息
+        if usage.daily_limit:
+            self._add_limit_row(table, usage.daily_limit, "每日限制\nDaily Limit")
+
+        if usage.total_limit:
+            self._add_limit_row(table, usage.total_limit, "总限制\nTotal Limit")
+
+        if usage.opus_weekly_limit:
+            self._add_limit_row(
+                table, usage.opus_weekly_limit, "Opus 周限制\nOpus Weekly"
+            )
+
+        if usage.time_window_limit:
+            self._add_limit_row(
+                table, usage.time_window_limit, "时间窗口\nTime Window"
+            )
+
+        # 打印表格
+        self.console.print(table)
+
+        # 显示总费用
+        self.console.print(
+            f"\n[bold]总费用 Total Cost:[/bold] [yellow]${usage.total_cost:.4f}[/yellow]"
+        )
+
+        # 显示获取时间
+        fetch_time = usage.fetched_at.strftime("%Y-%m-%d %H:%M:%S")
+        self.console.print(f"[dim]数据获取时间 Fetched At:[/dim] {fetch_time}")
+
+        # API ID
+        self.console.print(f"[dim]API ID:[/dim] {usage.api_id}")
+
+    def _add_limit_row(self, table: Table, limit, label: str) -> None:
+        """添加限制行到表格 - Add limit row to table
+
+        Args:
+            table: Rich 表格对象
+            limit: 限制对象
+            label: 标签
+        """
+        used = f"${limit.used:.4f}"
+        limit_value = f"${limit.value:.4f}"
+        remaining = (
+            f"${limit.remaining:.4f}" if limit.remaining is not None else "N/A"
+        )
+
+        # 计算使用百分比
+        if limit.value > 0:
+            percent = (limit.used / limit.value) * 100
+            status = self._get_status_emoji(percent)
+        else:
+            status = "➖"
+
+        table.add_row(label, used, limit_value, remaining, status)
+
+    def _get_status_emoji(self, percent: float) -> str:
+        """根据使用百分比返回状态表情 - Get status emoji based on percentage
+
+        Args:
+            percent: 使用百分比
+
+        Returns:
+            str: 状态表情符号
+        """
+        if percent >= 90:
+            return "🔴"  # 红色 - 严重
+        elif percent >= 80:
+            return "🟡"  # 黄色 - 警告
+        elif percent >= 50:
+            return "🟢"  # 绿色 - 正常
+        else:
+            return "🔵"  # 蓝色 - 良好

@@ -11,7 +11,8 @@ from rich.console import Console
 
 from . import __version__
 from .fetcher import UsageFetcher
-from .formatter import UsageFormatter
+from .formatter import ThirdPartyFormatter, UsageFormatter
+from .thirdparty import ThirdPartyFetcher
 
 # 全局 Console 用于错误输出
 console = Console(stderr=True)
@@ -127,6 +128,77 @@ def usage_show(ctx: click.Context, output_json: bool, no_color: bool):
         finally:
             # 清理资源
             await fetcher.close()
+
+    # 运行异步任务
+    asyncio.run(_fetch_and_display())
+
+
+@usage.command("third-party")
+@click.option(
+    "--api-url",
+    default="https://hk1.pincc.ai/apiStats/api/user-stats",
+    help="第三方 API URL - Third-party API URL",
+    show_default=True,
+)
+@click.option(
+    "--api-id",
+    required=True,
+    help="API ID（必填） - API ID (required)",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="以 JSON 格式输出 - Output in JSON format",
+)
+@click.option(
+    "--no-color",
+    is_flag=True,
+    help="禁用彩色输出 - Disable colored output",
+)
+def usage_third_party(
+    api_url: str, api_id: str, output_json: bool, no_color: bool
+):
+    """显示第三方 API 使用量 - Show third-party API usage
+
+    从第三方 Claude API 服务获取使用量数据。
+
+    示例 Examples:
+      claude-pulse usage third-party --api-id YOUR_API_ID
+      claude-pulse usage third-party --api-id YOUR_API_ID --json
+    """
+
+    async def _fetch_and_display():
+        """异步获取并显示数据"""
+        fetcher = ThirdPartyFetcher(api_url=api_url, api_id=api_id)
+
+        try:
+            # 显示加载提示（仅在非 JSON 模式）
+            if not output_json:
+                console.print("[cyan]正在获取使用量数据... Fetching usage data...[/cyan]")
+
+            # 获取使用量数据
+            usage_data = await fetcher.fetch_usage()
+
+            # 输出结果
+            if output_json:
+                # JSON 格式输出
+                output = json_lib.dumps(
+                    usage_data.model_dump(mode="json"),
+                    indent=2,
+                    ensure_ascii=False,
+                    default=str,
+                )
+                click.echo(output)
+            else:
+                # 表格格式输出
+                formatter = ThirdPartyFormatter(no_color=no_color)
+                formatter.format_table(usage_data)
+
+        except Exception as e:
+            # 错误处理
+            _handle_error(e, output_json)
+            sys.exit(1)
 
     # 运行异步任务
     asyncio.run(_fetch_and_display())

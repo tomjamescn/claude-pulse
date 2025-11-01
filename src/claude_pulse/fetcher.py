@@ -27,7 +27,8 @@ class UsageFetcher:
     async def fetch_current(self) -> UsageData:
         """获取当前使用量 - Fetch current usage
 
-        从 claude.ai/settings/usage 页面直接提取显示的信息
+        从 claude.ai/settings/usage 页面直接提取显示的信息。
+        在后台标签页中执行，获取数据后立即关闭，尽量减少对用户浏览的干扰。
 
         Returns:
             UsageData: 使用量数据
@@ -35,12 +36,17 @@ class UsageFetcher:
         Raises:
             Exception: 如果无法获取数据
         """
+        # 使用共享的浏览器上下文（保持登录态）
         context = await self.browser_service.get_context()
+
+        # 创建新标签页（后台）
         page = await context.new_page()
 
         try:
             # 导航到使用量页面
-            await page.goto("https://claude.ai/settings/usage", wait_until="networkidle")
+            await page.goto(
+                "https://claude.ai/settings/usage", wait_until="networkidle"
+            )
 
             # 从页面 DOM 提取数据
             usage_data = await self._extract_from_dom(page)
@@ -48,8 +54,8 @@ class UsageFetcher:
             return usage_data
 
         finally:
+            # 立即关闭标签页，减少干扰
             await page.close()
-            # 注意：不关闭浏览器，保持连接以便后续使用
 
     async def _extract_from_dom(self, page: Page) -> UsageData:
         """从页面 DOM 提取数据 - Extract data from DOM
@@ -67,8 +73,8 @@ class UsageFetcher:
         Returns:
             UsageData: 提取的使用量数据
         """
-        # 等待页面内容加载
-        await page.wait_for_timeout(2000)
+        # 等待页面内容加载（减少等待时间以快速完成）
+        await page.wait_for_timeout(1500)
 
         # 使用 JavaScript 提取页面文本内容
         page_text = await page.evaluate("""

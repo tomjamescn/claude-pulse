@@ -62,6 +62,30 @@ class MCPBrowserService:
         self._context = contexts[0]
         return self._context
 
+    async def create_isolated_context(self) -> BrowserContext:
+        """创建独立的浏览器上下文 - Create isolated browser context
+
+        创建一个新的浏览器上下文（新窗口），不影响用户当前浏览的标签页。
+        该上下文会共享浏览器的登录态（Cookies），但在独立的窗口中运行。
+
+        Returns:
+            BrowserContext: 新的独立浏览器上下文
+
+        Raises:
+            Exception: 如果浏览器未连接
+        """
+        if self._browser is None:
+            await self.connect()
+
+        # 创建新的浏览器上下文（独立窗口）
+        # 注意：这个上下文会共享浏览器的存储状态（Cookies等）
+        context = await self._browser.new_context(
+            viewport={"width": 1280, "height": 720},  # 设置窗口大小
+            # 注意：CDP 连接时无法真正隐藏窗口，但可以设置较小尺寸
+        )
+
+        return context
+
     async def close(self) -> None:
         """关闭连接 - Close connection
 
