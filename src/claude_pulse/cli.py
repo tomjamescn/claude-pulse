@@ -22,7 +22,7 @@ console = Console(stderr=True)
 @click.option(
     "--cdp-url",
     default="http://localhost:9222",
-    help="Chrome DevTools Protocol URL (默认: http://localhost:9222)",
+    help="浏览器 DevTools Protocol URL - Browser CDP URL (默认: http://localhost:9222)",
     show_default=True,
 )
 @click.pass_context
@@ -30,6 +30,11 @@ def app(ctx: click.Context, cdp_url: str):
     """Claude Pulse - 监控 Claude 使用量
 
     Monitor your Claude usage from the command line.
+
+    支持的浏览器 Supported Browsers:
+      - Microsoft Edge (推荐 Recommended)
+      - Google Chrome
+      - Chromium
 
     示例 Examples:
       claude-pulse usage show              # 查看使用量
@@ -63,12 +68,22 @@ def usage():
 def usage_show(ctx: click.Context, output_json: bool, no_color: bool):
     """显示当前使用量 - Show current usage
 
-    连接到 Chrome 浏览器，访问 claude.ai/settings/usage 并显示使用量数据。
+    连接到浏览器，访问 claude.ai/settings/usage 并显示使用量数据。
 
     前置要求 Prerequisites:
-      - Chrome 浏览器正在运行（启用远程调试）
-      - 已安装 Playwright MCP 扩展
+      - Edge/Chrome 浏览器正在运行（启用远程调试）
       - 已登录 claude.ai
+
+    启动浏览器 Start Browser:
+      Edge (推荐):
+        macOS: /Applications/Microsoft\\ Edge.app/.../Microsoft\\ Edge
+               --remote-debugging-port=9222
+        Windows: msedge.exe --remote-debugging-port=9222
+
+      Chrome:
+        macOS: /Applications/Google\\ Chrome.app/.../Google\\ Chrome
+               --remote-debugging-port=9222
+        Windows: chrome.exe --remote-debugging-port=9222
 
     示例 Examples:
       claude-pulse usage show
@@ -142,23 +157,31 @@ def _handle_error(error: Exception, json_output: bool = False) -> None:
         console.print("[yellow]故障排除 Troubleshooting:[/yellow]")
 
         if "connect" in error_msg or "connection" in error_msg:
-            console.print("  1. 确保 Chrome 浏览器正在运行")
-            console.print("     Ensure Chrome browser is running")
-            console.print("  2. 启用远程调试: chrome --remote-debugging-port=9222")
-            console.print("     Enable remote debugging")
+            console.print("  1. 确保浏览器正在运行（Edge 或 Chrome）")
+            console.print("     Ensure browser is running (Edge or Chrome)")
+            console.print("\n  启动 Edge (推荐) Launch Edge (Recommended):")
+            console.print("     macOS:")
+            console.print(
+                '       /Applications/Microsoft\\ Edge.app/Contents/MacOS/Microsoft\\ Edge \\'
+            )
+            console.print("         --remote-debugging-port=9222 &")
+            console.print("\n  启动 Chrome Launch Chrome:")
+            console.print("     macOS:")
+            console.print(
+                '       /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome \\'
+            )
+            console.print("         --remote-debugging-port=9222 &")
         elif "context" in error_msg:
-            console.print("  1. 确保 Chrome 浏览器有打开的标签页")
-            console.print("     Ensure Chrome has open tabs")
+            console.print("  1. 确保浏览器有打开的标签页")
+            console.print("     Ensure browser has open tabs")
             console.print("  2. 确保已登录 claude.ai")
             console.print("     Ensure you are logged into claude.ai")
         else:
-            console.print("  1. 检查 Chrome 浏览器是否正在运行")
-            console.print("     Check if Chrome is running")
-            console.print("  2. 检查 Playwright MCP 扩展是否已安装")
-            console.print("     Check if Playwright MCP extension is installed")
-            console.print("  3. 确保已登录 claude.ai")
+            console.print("  1. 检查浏览器是否正在运行")
+            console.print("     Check if browser is running")
+            console.print("  2. 确保已登录 claude.ai")
             console.print("     Ensure you are logged into claude.ai")
-            console.print("  4. 尝试使用 --cdp-url 指定自定义 CDP 地址")
+            console.print("  3. 尝试使用 --cdp-url 指定自定义 CDP 地址")
             console.print("     Try using --cdp-url to specify custom CDP address")
 
         console.print("\n[dim]详细错误信息 Detailed error:[/dim]")

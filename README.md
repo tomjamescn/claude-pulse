@@ -11,6 +11,7 @@
 - 📱 JSON 格式输出支持
 - 🌐 中英文双语界面
 - 🔒 复用浏览器登录态，无需额外认证
+- 🌍 支持 Edge、Chrome 等 Chromium 浏览器
 - ⚡ 快速原型，简单易用
 
 ## 🚀 快速开始 Quick Start
@@ -28,21 +29,34 @@ uv pip install -e .
 
 ### 前置要求 Prerequisites
 
-1. **Chrome 浏览器** - 启用远程调试
-   ```bash
-   # macOS / Linux
-   google-chrome --remote-debugging-port=9222
+1. **Edge 或 Chrome 浏览器** - 启用远程调试
 
-   # 或者设置别名
-   alias chrome-debug="google-chrome --remote-debugging-port=9222"
+   **Microsoft Edge (推荐 Recommended):**
+   ```bash
+   # macOS
+   /Applications/Microsoft\ Edge.app/Contents/MacOS/Microsoft\ Edge --remote-debugging-port=9222 &
+
+   # Windows
+   "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --remote-debugging-port=9222
+
+   # Linux
+   microsoft-edge --remote-debugging-port=9222 &
    ```
 
-2. **Playwright MCP Chrome Extension** (可选，推荐)
-   - 安装: [Playwright MCP](https://github.com/microsoft/playwright-mcp/blob/main/extension/README.md)
-   - 用于复用浏览器会话和登录状态
+   **Google Chrome:**
+   ```bash
+   # macOS
+   /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 &
 
-3. **登录 claude.ai**
-   - 在 Chrome 中登录 https://claude.ai
+   # Windows
+   chrome.exe --remote-debugging-port=9222
+
+   # Linux
+   google-chrome --remote-debugging-port=9222 &
+   ```
+
+2. **登录 claude.ai**
+   - 在浏览器中登录 https://claude.ai
 
 ### 使用 Usage
 
@@ -56,7 +70,7 @@ claude-pulse usage show --json
 # 禁用彩色输出（适用于脚本）
 claude-pulse usage show --no-color
 
-# 自定义 Chrome 调试端口
+# 自定义浏览器调试端口
 claude-pulse --cdp-url http://localhost:9223 usage show
 
 # 查看帮助
@@ -140,8 +154,9 @@ python -m claude_pulse usage show
 ## 📝 注意事项 Notes
 
 1. **当前版本使用模拟数据** - 实际的 Claude API 数据抓取需要根据真实 API 端点调整
-2. **需要手动启动 Chrome** - 确保 Chrome 以调试模式运行
+2. **需要手动启动浏览器** - 确保浏览器以调试模式运行（推荐使用 Edge）
 3. **原型版本** - 专注快速交付，后续会添加更多功能
+4. **浏览器兼容性** - 支持所有基于 Chromium 的浏览器（Edge、Chrome、Brave 等）
 
 ## 🤝 贡献 Contributing
 
