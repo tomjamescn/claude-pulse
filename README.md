@@ -39,6 +39,21 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 uv pip install -e .
 ```
 
+### 首次配置 First-time Setup
+
+```bash
+# 方式 1：交互式配置（推荐）
+claude-pulse config init
+
+# 方式 2：直接设置 API ID
+claude-pulse config set pincc.api_id "YOUR_API_ID"
+
+# 查看当前配置
+claude-pulse config show
+```
+
+配置文件位置：`~/.config/claude-pulse/config.toml`
+
 ### 前置要求 Prerequisites
 
 1. **Edge 或 Chrome 浏览器** - 启用远程调试
@@ -97,6 +112,24 @@ claude-pulse usage show --help
 ```
 
 ## 🎨 命令行参数 CLI Options
+
+### 配置命令
+
+```bash
+# 初始化配置（交互式）
+claude-pulse config init
+
+# 查看配置
+claude-pulse config show
+
+# 设置配置项
+claude-pulse config set <key> <value>
+
+# 示例：
+claude-pulse config set pincc.api_id "your-api-id"
+claude-pulse config set defaults.output_format json
+claude-pulse config set defaults.source pincc
+```
 
 ### 全局参数
 
@@ -281,9 +314,23 @@ python -m claude_pulse usage show
 
 2. **第三方 API 数据** (--source pincc)
    - 无需浏览器，直接调用 API
-   - 当前使用硬编码的 API ID
+   - **需要配置 Pincc API ID**（运行 `claude-pulse config init`）
    - 支持时间窗口限制展示
    - 显示详细的费用统计
+
+### 配置文件说明
+
+配置文件位置：`~/.config/claude-pulse/config.toml`
+
+```toml
+[pincc]
+api_id = "your-api-id-here"  # 第三方 API ID（必需）
+
+[defaults]
+output_format = "table"       # 默认输出格式：table, json
+no_color = false              # 是否禁用颜色
+source = "all"                # 默认数据源：all, claude, pincc
+```
 
 ### 技术说明
 

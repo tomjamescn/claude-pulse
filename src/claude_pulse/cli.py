@@ -10,6 +10,7 @@ import click
 from rich.console import Console
 
 from . import __version__
+from .config import get_config_manager
 from .fetcher import UsageFetcher
 from .formatter import ThirdPartyFormatter, UsageFormatter
 from .thirdparty import ThirdPartyFetcher
@@ -50,6 +51,12 @@ def app(ctx: click.Context, cdp_url: str):
 @app.group()
 def usage():
     """使用量相关命令 - Usage related commands"""
+    pass
+
+
+@app.group()
+def config():
+    """配置管理命令 - Configuration management commands"""
     pass
 
 
@@ -234,6 +241,181 @@ def _handle_error(error: Exception, json_output: bool = False) -> None:
 
         console.print("\n[dim]详细错误信息 Detailed error:[/dim]")
         console.print(f"[dim]{type(error).__name__}: {error}[/dim]")
+
+
+@config.command("init")
+def config_init():
+    """初始化配置文件 - Initialize configuration file
+
+    交互式创建配置文件，引导用户输入必要的配置项。
+    Interactively create configuration file with guided setup.
+
+    示例 Example:
+      claude-pulse config init
+    """
+    config_manager = get_config_manager()
+
+    # 检查是否已存在配置
+    if config_manager.exists():
+        console.print(
+            f"\n[yellow]⚠️  配置文件已存在:[/yellow] "
+            f"[cyan]{config_manager.get_config_path()}[/cyan]\n"
+        )
+        if not click.confirm("是否要重新配置？Overwrite existing config?", default=False):
+            console.print("[dim]已取消 Cancelled[/dim]\n")
+            return
+
+    # 交互式初始化
+    try:
+        config_manager.init_interactive()
+    except Exception as e:
+        console.print(f"\n[red]❌ 配置失败 Failed:[/red] {e}\n")
+        sys.exit(1)
+
+
+@config.command("show")
+def config_show():
+    """显示当前配置 - Show current configuration
+
+    显示配置文件的内容和路径。
+    Display configuration file content and path.
+
+    示例 Example:
+      claude-pulse config show
+    """
+    config_manager = get_config_manager()
+
+    if not config_manager.exists():
+        console.print(
+            "\n[yellow]⚠️  配置文件不存在[/yellow] "
+            "[dim]Configuration file does not exist[/dim]\n"
+        )
+        console.print(
+            "[dim]提示: 运行 [/dim][cyan]claude-pulse config init[/cyan] "
+            "[dim]创建配置文件[/dim]\n"
+        )
+        return
+
+    try:
+        config = config_manager.load()
+        config_path = config_manager.get_config_path()
+
+        console.print(
+            f"\n[bold cyan]配置文件路径 Config File:[/bold cyan] "
+            f"[green]{config_path}[/green]\n"
+        )
+
+        # 显示配置内容
+        console.print("[bold cyan]配置内容 Configuration:[/bold cyan]\n")
+
+        # Pincc 配置
+        console.print("[bold]Pincc API:[/bold]")
+        if config.pincc.api_id:
+            # 隐藏部分 API ID（安全考虑）
+            masked_id = (
+                config.pincc.api_id[:8] + "****" + config.pincc.api_id[-4:]
+                if len(config.pincc.api_id) > 12
+                else "****"
+            )
+            console.print(f"  API ID: [green]{masked_id}[/green]")
+        else:
+            console.print("  API ID: [dim]未配置 Not configured[/dim]")
+
+        # 默认配置
+        console.print("\n[bold]默认配置 Defaults:[/bold]")
+        console.print(f"  输出格式 Output Format: [cyan]{config.defaults.output_format}[/cyan]")
+        console.print(
+            f"  禁用颜色 No Color: [cyan]{config.defaults.no_color}[/cyan]"
+        )
+        console.print(f"  默认数据源 Source: [cyan]{config.defaults.source}[/cyan]")
+
+        console.print()
+
+    except Exception as e:
+        console.print(f"\n[red]❌ 读取配置失败 Failed:[/red] {e}\n")
+        sys.exit(1)
+
+
+@config.command("set")
+@click.argument("key")
+@click.argument("value")
+def config_set(key: str, value: str):
+    """设置配置项 - Set configuration value
+
+    设置指定的配置项的值。
+    Set the value of a configuration key.
+
+    支持的配置项 Supported keys:
+      - pincc.api_id          第三方 API ID
+      - defaults.output_format  输出格式 (table, json)
+      - defaults.no_color      禁用颜色 (true, false)
+      - defaults.source        默认数据源 (all, claude, pincc)
+
+    示例 Examples:
+      claude-pulse config set pincc.api_id "your-api-id"
+      claude-pulse config set defaults.output_format json
+      claude-pulse config set defaults.source pincc
+    """
+    config_manager = get_config_manager()
+
+    try:
+        # 加载现有配置或创建新配置
+        config = config_manager.load()
+
+        # 解析 key (支持嵌套，如 pincc.api_id)
+        parts = key.split(".")
+        if len(parts) != 2:
+            console.print(
+                f"\n[red]❌ 无效的配置项:[/red] {key}\n"
+                "[dim]格式应为: section.key (例如: pincc.api_id)[/dim]\n"
+            )
+            sys.exit(1)
+
+        section, config_key = parts
+
+        # 根据 section 更新配置
+        if section == "pincc":
+            if config_key == "api_id":
+                config.pincc.api_id = value
+            else:
+                console.print(f"\n[red]❌ 未知的配置项:[/red] {key}\n")
+                sys.exit(1)
+        elif section == "defaults":
+            if config_key == "output_format":
+                if value not in ["table", "json"]:
+                    console.print(
+                        f"\n[red]❌ 无效的值:[/red] {value}\n"
+                        "[dim]output_format 必须是 'table' 或 'json'[/dim]\n"
+                    )
+                    sys.exit(1)
+                config.defaults.output_format = value
+            elif config_key == "no_color":
+                config.defaults.no_color = value.lower() in ["true", "1", "yes"]
+            elif config_key == "source":
+                if value not in ["all", "claude", "pincc"]:
+                    console.print(
+                        f"\n[red]❌ 无效的值:[/red] {value}\n"
+                        "[dim]source 必须是 'all', 'claude' 或 'pincc'[/dim]\n"
+                    )
+                    sys.exit(1)
+                config.defaults.source = value
+            else:
+                console.print(f"\n[red]❌ 未知的配置项:[/red] {key}\n")
+                sys.exit(1)
+        else:
+            console.print(f"\n[red]❌ 未知的配置分组:[/red] {section}\n")
+            sys.exit(1)
+
+        # 保存配置
+        config_manager.save(config)
+
+        console.print(
+            f"\n[green]✅ 配置已更新:[/green] [cyan]{key}[/cyan] = [yellow]{value}[/yellow]\n"
+        )
+
+    except Exception as e:
+        console.print(f"\n[red]❌ 设置配置失败 Failed:[/red] {e}\n")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

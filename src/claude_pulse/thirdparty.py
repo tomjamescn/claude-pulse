@@ -3,10 +3,11 @@
 从第三方 Claude API 服务获取使用量数据
 """
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import httpx
 
+from .config import get_config_manager
 from .models import ThirdPartyLimit, ThirdPartyUsageData
 
 
@@ -16,23 +17,42 @@ class ThirdPartyFetcher:
     通过 HTTP 请求获取第三方 Claude API 服务的使用量信息
     """
 
-    # 默认配置 - 固化的 API 配置
+    # 默认配置
     DEFAULT_API_URL = "https://hk1.pincc.ai/apiStats/api/user-stats"
-    DEFAULT_API_ID = "719b5189-1855-4982-9331-a15927e34525"
 
     def __init__(
         self,
-        api_url: str = None,
-        api_id: str = None,
+        api_url: Optional[str] = None,
+        api_id: Optional[str] = None,
     ):
         """初始化获取器
 
         Args:
-            api_url: API 端点 URL（可选，默认使用固化的 URL）
-            api_id: API ID（可选，默认使用固化的 ID）
+            api_url: API 端点 URL（可选，默认使用配置文件）
+            api_id: API ID（可选，默认从配置文件读取）
+
+        Raises:
+            ValueError: 如果 API ID 未配置
         """
         self.api_url = api_url or self.DEFAULT_API_URL
-        self.api_id = api_id or self.DEFAULT_API_ID
+
+        # 优先使用传入的 API ID，否则从配置文件读取
+        if api_id:
+            self.api_id = api_id
+        else:
+            # 从配置文件读取
+            config_manager = get_config_manager()
+            config = config_manager.get()
+
+            if not config.pincc.api_id:
+                raise ValueError(
+                    "Pincc API ID 未配置。请运行 'claude-pulse config init' 进行配置，"
+                    "或使用 'claude-pulse config set pincc.api_id YOUR_API_ID' 设置。\n"
+                    "Pincc API ID is not configured. Please run 'claude-pulse config init' "
+                    "or use 'claude-pulse config set pincc.api_id YOUR_API_ID'."
+                )
+
+            self.api_id = config.pincc.api_id
 
     async def fetch_usage(self) -> ThirdPartyUsageData:
         """获取使用量数据 - Fetch usage data
