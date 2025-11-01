@@ -86,7 +86,6 @@ class ThirdPartyFetcher:
         # 解析各种限制
         daily_limit = None
         total_limit = None
-        opus_weekly_limit = None
         time_window_limit = None
         total_cost = limits.get("currentTotalCost", 0.0)
 
@@ -118,32 +117,25 @@ class ThirdPartyFetcher:
                 unit="USD",
             )
 
-        # 解析 Opus 周限制
-        weekly_opus_cost_limit = limits.get("weeklyOpusCostLimit", 0)
-        weekly_opus_cost = limits.get("weeklyOpusCost", 0.0)
-        if weekly_opus_cost_limit > 0:
-            opus_weekly_limit = ThirdPartyLimit(
-                type="Opus Weekly Limit",
-                value=weekly_opus_cost_limit,
-                used=weekly_opus_cost,
-                remaining=weekly_opus_cost_limit - weekly_opus_cost
-                if weekly_opus_cost_limit > 0
-                else None,
-                unit="USD",
-            )
+        # 解析时间窗口信息
+        window_start_time_ms = limits.get("windowStartTime")
+        window_end_time_ms = limits.get("windowEndTime")
+        window_remaining_seconds = limits.get("windowRemainingSeconds", 0)
+
+        # 转换时间戳（毫秒）为 datetime
+        window_start_time = None
+        window_end_time = None
+        if window_start_time_ms:
+            window_start_time = datetime.fromtimestamp(window_start_time_ms / 1000)
+        if window_end_time_ms:
+            window_end_time = datetime.fromtimestamp(window_end_time_ms / 1000)
 
         # 解析时间窗口限制 (rateLimitCost)
         rate_limit_cost = limits.get("rateLimitCost", 0)
         current_window_cost = limits.get("currentWindowCost", 0.0)
-        window_remaining_seconds = limits.get("windowRemainingSeconds", 0)
         if rate_limit_cost > 0:
-            # 将剩余秒数转换为可读格式
-            hours = window_remaining_seconds // 3600
-            minutes = (window_remaining_seconds % 3600) // 60
-            time_window_label = f"{hours}h {minutes}m"
-
             time_window_limit = ThirdPartyLimit(
-                type=f"Time Window Limit ({time_window_label} left)",
+                type="Time Window Limit",
                 value=rate_limit_cost,
                 used=current_window_cost,
                 remaining=rate_limit_cost - current_window_cost
@@ -156,8 +148,10 @@ class ThirdPartyFetcher:
             api_id=self.api_id,
             daily_limit=daily_limit,
             total_limit=total_limit,
-            opus_weekly_limit=opus_weekly_limit,
             time_window_limit=time_window_limit,
+            window_start_time=window_start_time,
+            window_end_time=window_end_time,
+            window_remaining_seconds=window_remaining_seconds,
             total_cost=total_cost,
             fetched_at=datetime.now(),
         )

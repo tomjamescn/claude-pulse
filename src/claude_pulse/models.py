@@ -40,12 +40,12 @@ class ThirdPartyUsageData(BaseModel):
     api_id: str = Field(..., description="API ID")
     daily_limit: Optional[ThirdPartyLimit] = Field(None, description="每日费用限制")
     total_limit: Optional[ThirdPartyLimit] = Field(None, description="总费用限制")
-    opus_weekly_limit: Optional[ThirdPartyLimit] = Field(
-        None, description="Opus 模型周费用限制"
-    )
     time_window_limit: Optional[ThirdPartyLimit] = Field(
         None, description="时间窗口限制"
     )
+    window_start_time: Optional[datetime] = Field(None, description="窗口开始时间")
+    window_end_time: Optional[datetime] = Field(None, description="窗口结束时间")
+    window_remaining_seconds: Optional[int] = Field(None, description="窗口剩余秒数")
     total_cost: float = Field(default=0.0, description="总费用")
     fetched_at: datetime = Field(
         default_factory=datetime.now, description="数据获取时间"

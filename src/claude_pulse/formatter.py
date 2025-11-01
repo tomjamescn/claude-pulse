@@ -181,18 +181,32 @@ class ThirdPartyFormatter:
         if usage.total_limit:
             self._add_limit_row(table, usage.total_limit, "总限制\nTotal Limit")
 
-        if usage.opus_weekly_limit:
-            self._add_limit_row(
-                table, usage.opus_weekly_limit, "Opus 周限制\nOpus Weekly"
-            )
-
+        # 时间窗口限制 - 重点显示
         if usage.time_window_limit:
             self._add_limit_row(
-                table, usage.time_window_limit, "时间窗口\nTime Window"
+                table, usage.time_window_limit, "⏱️  时间窗口限制\nTime Window Limit"
             )
 
         # 打印表格
         self.console.print(table)
+
+        # 显示时间窗口详细信息
+        if usage.window_remaining_seconds is not None:
+            hours = usage.window_remaining_seconds // 3600
+            minutes = (usage.window_remaining_seconds % 3600) // 60
+            self.console.print(
+                f"\n[bold]时间窗口 Time Window:[/bold] "
+                f"[cyan]剩余 {hours} 小时 {minutes} 分钟[/cyan] "
+                f"([dim]Remaining {hours}h {minutes}m[/dim])"
+            )
+
+        # 显示窗口时间范围
+        if usage.window_start_time and usage.window_end_time:
+            start_str = usage.window_start_time.strftime("%Y-%m-%d %H:%M")
+            end_str = usage.window_end_time.strftime("%Y-%m-%d %H:%M")
+            self.console.print(
+                f"[dim]窗口时间 Window Period:[/dim] {start_str} → {end_str}"
+            )
 
         # 显示总费用
         self.console.print(
