@@ -225,7 +225,7 @@ Usage          ███████░░░░░░░░░░░░░░�
     "fetched_at": "2025-11-02T06:40:40"
   },
   "pincc": {
-    "api_id": "719b5189-1855-4982-9331-a15927e34525",
+    "api_id": "APP ID",
     "time_window_limit": {
       "type": "Time Window Limit",
       "value": 133.0,

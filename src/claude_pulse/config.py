@@ -154,7 +154,7 @@ class ConfigManager:
         )
         console.print("[dim]获取方式: 访问 https://pincc.ai 并登录[/dim]")
         console.print(
-            "[dim]示例: 719b5189-1855-4982-9331-a15927e34525[/dim]\n",
+            "[dim]示例: APP ID[/dim]\n",
             style="dim",
         )
 
