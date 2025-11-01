@@ -31,49 +31,37 @@ class UsageFormatter:
             usage: 使用量数据
         """
         # 创建标题
-        title = Text(f"Claude Usage - {usage.billing_period}", style="bold cyan")
+        title = Text(f"Claude Usage - {usage.plan_type}", style="bold cyan")
 
         # 创建表格
         table = Table(title=title, show_header=True, header_style="bold magenta")
-        table.add_column("指标 Metric", style="cyan", width=20)
-        table.add_column("已使用 / 配额 Used / Quota", justify="right", style="yellow")
-        table.add_column("百分比 Percentage", justify="right", style="green")
-        table.add_column("状态 Status", justify="center", width=10)
+        table.add_column("项目 Item", style="cyan", width=25)
+        table.add_column("值 Value", justify="left", style="yellow")
 
-        # 添加输入 tokens 行
-        input_status = self._get_status_emoji(usage.input_usage_percent)
+        # 添加会话类型
+        table.add_row("会话类型\nSession Type", usage.session_type)
+
+        # 添加使用百分比
+        status_emoji = self._get_status_emoji(usage.usage_percent)
         table.add_row(
-            "输入 Tokens\nInput Tokens",
-            f"{usage.input_tokens_used:,} / {usage.input_tokens_quota:,}",
-            f"{usage.input_usage_percent:.1f}%",
-            input_status,
+            "使用率\nUsage",
+            f"{usage.usage_percent:.0f}% used {status_emoji}",
         )
 
-        # 添加输出 tokens 行
-        output_status = self._get_status_emoji(usage.output_usage_percent)
-        table.add_row(
-            "输出 Tokens\nOutput Tokens",
-            f"{usage.output_tokens_used:,} / {usage.output_tokens_quota:,}",
-            f"{usage.output_usage_percent:.1f}%",
-            output_status,
-        )
+        # 添加重置时间
+        table.add_row("重置时间\nResets In", usage.reset_time)
 
-        # 添加总消息数行
-        table.add_row(
-            "总消息数\nTotal Messages",
-            f"{usage.total_messages:,}",
-            "-",
-            "📊",
-        )
+        # 添加最后更新时间
+        table.add_row("最后更新\nLast Updated", usage.last_updated)
 
         # 打印表格
         self.console.print(table)
 
         # 添加进度条
-        self._show_progress_bars(usage)
+        self._show_progress_bar(usage)
 
-        # 添加时间信息
-        self._show_period_info(usage)
+        # 添加警告信息
+        self._show_warning(usage)
 
     def _get_status_emoji(self, percent: float) -> str:
         """根据使用百分比返回状态表情 - Get status emoji based on percentage
@@ -93,39 +81,30 @@ class UsageFormatter:
         else:
             return "🔵"  # 蓝色 - 良好
 
-    def _show_progress_bars(self, usage: UsageData) -> None:
-        """显示进度条 - Show progress bars
+    def _show_progress_bar(self, usage: UsageData) -> None:
+        """显示进度条 - Show progress bar
 
         Args:
             usage: 使用量数据
         """
         self.console.print("\n[bold]使用量进度 Usage Progress:[/bold]")
 
-        # 输入 tokens 进度条
-        input_bar = self._create_progress_bar(
-            "Input Tokens", usage.input_usage_percent, usage.input_tokens_quota
-        )
-        self.console.print(input_bar)
+        # 使用百分比进度条
+        bar = self._create_progress_bar("Usage", usage.usage_percent)
+        self.console.print(bar)
 
-        # 输出 tokens 进度条
-        output_bar = self._create_progress_bar(
-            "Output Tokens", usage.output_usage_percent, usage.output_tokens_quota
-        )
-        self.console.print(output_bar)
-
-    def _create_progress_bar(self, label: str, percent: float, total: int) -> str:
+    def _create_progress_bar(self, label: str, percent: float) -> str:
         """创建进度条文本 - Create progress bar text
 
         Args:
             label: 标签
             percent: 百分比
-            total: 总量
 
         Returns:
             str: 进度条文本
         """
-        # 计算进度条长度（最大 40 个字符）
-        bar_length = 40
+        # 计算进度条长度（最大 50 个字符）
+        bar_length = 50
         filled_length = int(bar_length * percent / 100)
 
         # 选择颜色
@@ -141,26 +120,24 @@ class UsageFormatter:
 
         return f"[{color}]{label:15s}[/{color}] [{color}]{bar}[/{color}] {percent:5.1f}%"
 
-    def _show_period_info(self, usage: UsageData) -> None:
-        """显示周期信息 - Show period info
+    def _show_warning(self, usage: UsageData) -> None:
+        """显示警告信息 - Show warning
 
         Args:
             usage: 使用量数据
         """
-        period_text = (
-            f"\n[dim]计费周期 Billing Period:[/dim] "
-            f"{usage.period_start.strftime('%Y-%m-%d')} → "
-            f"{usage.period_end.strftime('%Y-%m-%d')}\n"
-            f"[dim]获取时间 Fetched At:[/dim] {usage.fetched_at.strftime('%Y-%m-%d %H:%M:%S')}"
+        # 显示获取时间
+        fetch_time = usage.fetched_at.strftime("%Y-%m-%d %H:%M:%S")
+        self.console.print(
+            f"\n[dim]数据获取时间 Fetched At:[/dim] {fetch_time}"
         )
-        self.console.print(period_text)
 
         # 如果是高使用量，显示警告
-        if usage.is_high_usage:
+        if usage.usage_percent >= 80:
             warning = Panel(
                 "[bold red]⚠️  警告 WARNING[/bold red]\n"
-                "使用量已超过 80%，请注意控制使用\n"
-                "Usage exceeds 80%, please monitor carefully",
+                f"使用量已达到 {usage.usage_percent:.0f}%，请注意控制使用\n"
+                f"Usage has reached {usage.usage_percent:.0f}%, please monitor carefully",
                 border_style="red",
             )
             self.console.print(warning)

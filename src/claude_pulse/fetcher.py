@@ -3,9 +3,8 @@
 从 claude.ai/settings/usage 抓取使用量数据
 """
 from datetime import datetime
-from typing import Optional
 
-from playwright.async_api import Page, Response
+from playwright.async_api import Page
 
 from .browser import MCPBrowserService
 from .models import UsageData
@@ -24,26 +23,11 @@ class UsageFetcher:
             cdp_url: Chrome DevTools Protocol URL
         """
         self.browser_service = MCPBrowserService(cdp_url=cdp_url)
-        self._usage_api_response: Optional[dict] = None
-
-    async def _intercept_usage_api(self, response: Response) -> None:
-        """拦截使用量 API 响应 - Intercept usage API response
-
-        Args:
-            response: 网络响应对象
-        """
-        # 检查是否是使用量 API 请求
-        # 注意：实际的 API 端点需要通过浏览器调试确认
-        if "usage" in response.url or "consumption" in response.url:
-            try:
-                data = await response.json()
-                self._usage_api_response = data
-            except Exception:
-                # 忽略非 JSON 响应
-                pass
 
     async def fetch_current(self) -> UsageData:
         """获取当前使用量 - Fetch current usage
+
+        从 claude.ai/settings/usage 页面直接提取显示的信息
 
         Returns:
             UsageData: 使用量数据
@@ -55,23 +39,11 @@ class UsageFetcher:
         page = await context.new_page()
 
         try:
-            # 设置响应拦截器
-            page.on("response", self._intercept_usage_api)
-
             # 导航到使用量页面
             await page.goto("https://claude.ai/settings/usage", wait_until="networkidle")
 
-            # 等待页面加载完成
-            await page.wait_for_timeout(2000)  # 等待 2 秒确保 API 请求完成
-
-            # TODO: 实际实现需要根据真实 API 响应结构解析数据
-            # 当前使用模拟数据作为原型
-            if self._usage_api_response:
-                # 如果拦截到 API 响应，尝试解析
-                usage_data = self._parse_api_response(self._usage_api_response)
-            else:
-                # 降级方案：从页面 DOM 提取数据
-                usage_data = await self._extract_from_dom(page)
+            # 从页面 DOM 提取数据
+            usage_data = await self._extract_from_dom(page)
 
             return usage_data
 
@@ -79,37 +51,15 @@ class UsageFetcher:
             await page.close()
             # 注意：不关闭浏览器，保持连接以便后续使用
 
-    def _parse_api_response(self, api_data: dict) -> UsageData:
-        """解析 API 响应 - Parse API response
-
-        Args:
-            api_data: API 响应数据
-
-        Returns:
-            UsageData: 解析后的使用量数据
-        """
-        # TODO: 根据实际 API 响应结构解析
-        # 这里使用模拟数据结构
-        return UsageData(
-            billing_period=api_data.get("billing_period", "2025-10"),
-            period_start=datetime.fromisoformat(
-                api_data.get("period_start", datetime.now().isoformat())
-            ),
-            period_end=datetime.fromisoformat(
-                api_data.get("period_end", datetime.now().isoformat())
-            ),
-            input_tokens_used=api_data.get("input_tokens_used", 0),
-            input_tokens_quota=api_data.get("input_tokens_quota", 5000000),
-            output_tokens_used=api_data.get("output_tokens_used", 0),
-            output_tokens_quota=api_data.get("output_tokens_quota", 2500000),
-            total_messages=api_data.get("total_messages", 0),
-            fetched_at=datetime.now(),
-        )
-
     async def _extract_from_dom(self, page: Page) -> UsageData:
         """从页面 DOM 提取数据 - Extract data from DOM
 
-        当无法拦截 API 时的降级方案
+        提取页面上显示的关键信息：
+        - Plan usage limits
+        - Current session
+        - 使用百分比 (10% used)
+        - 重置时间 (Resets in 3 hr 16 min)
+        - 最后更新 (Last updated: 1 minute ago)
 
         Args:
             page: Playwright 页面对象
@@ -117,17 +67,64 @@ class UsageFetcher:
         Returns:
             UsageData: 提取的使用量数据
         """
-        # TODO: 根据实际页面结构提取数据
-        # 当前返回模拟数据用于原型测试
+        # 等待页面内容加载
+        await page.wait_for_timeout(2000)
+
+        # 使用 JavaScript 提取页面文本内容
+        page_text = await page.evaluate("""
+            () => {
+                const text = document.body.innerText;
+                return text;
+            }
+        """)
+
+        # 解析关键信息
+        plan_type = "Plan usage limits"  # 默认值
+        session_type = "Current session"  # 默认值
+        usage_percent = 0.0
+        reset_time = "Unknown"
+        last_updated = "Unknown"
+
+        # 提取使用百分比 - 匹配 "10% used" 或 "10 % used"
+        import re
+
+        usage_match = re.search(r"(\d+)\s*%\s*used", page_text, re.IGNORECASE)
+        if usage_match:
+            usage_percent = float(usage_match.group(1))
+
+        # 提取重置时间 - 匹配 "Resets in 3 hr 16 min"
+        reset_match = re.search(
+            r"Resets in\s+(.+?)(?:\n|$)", page_text, re.IGNORECASE
+        )
+        if reset_match:
+            reset_time = reset_match.group(1).strip()
+
+        # 提取最后更新时间 - 匹配 "Last updated: 1 minute ago"
+        updated_match = re.search(
+            r"Last updated:\s+(.+?)(?:\n|$)", page_text, re.IGNORECASE
+        )
+        if updated_match:
+            last_updated = updated_match.group(1).strip()
+
+        # 检查计划类型
+        if "Plan usage limits" in page_text:
+            plan_type = "Plan usage limits"
+        elif "plan" in page_text.lower():
+            # 尝试提取实际的计划名称
+            plan_match = re.search(r"([\w\s]+plan[\w\s]*)", page_text, re.IGNORECASE)
+            if plan_match:
+                plan_type = plan_match.group(1).strip()
+
+        # 检查会话类型
+        if "Current session" in page_text:
+            session_type = "Current session"
+
         return UsageData(
-            billing_period="2025-10",
-            period_start=datetime(2025, 10, 1),
-            period_end=datetime(2025, 10, 31),
-            input_tokens_used=1234567,
-            input_tokens_quota=5000000,
-            output_tokens_used=654321,
-            output_tokens_quota=2500000,
-            total_messages=150,
+            plan_type=plan_type,
+            session_type=session_type,
+            usage_percent=usage_percent,
+            reset_time=reset_time,
+            last_updated=last_updated,
             fetched_at=datetime.now(),
         )
 
